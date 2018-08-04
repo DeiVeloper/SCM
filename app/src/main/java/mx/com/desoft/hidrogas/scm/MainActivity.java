@@ -3,6 +3,7 @@ package mx.com.desoft.hidrogas.scm;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.support.v4.app.ActivityCompat;
@@ -44,7 +45,9 @@ public class MainActivity extends AppCompatActivity{
         /**
          * HOST
          * */
-        private static final String ADDRESS = "IP";
+        private static final String ADDRESS = "192.168.100.18";
+
+        private Thread thread = null;
 
         @Override
         protected void onCreate(Bundle savedInstanceState) {
@@ -52,15 +55,15 @@ public class MainActivity extends AppCompatActivity{
             setContentView(R.layout.activity_main);
 
 
-            /*button = ((Button) findViewById(R.id.button));
+            button = ((Button) findViewById(R.id.button));
             editText = ((EditText) findViewById(R.id.editText));
-            editText2 = ((EditText) findViewById(R.id.editText2));*/
+            editText2 = ((EditText) findViewById(R.id.editText2));
             //LeerDirectorio();
             //MyATaskCliente myATaskYW = new MyATaskCliente();
             //myATaskYW.execute("");
 
 
-            final Thread t = new Thread() {
+             thread = new Thread() {
                 @Override
                 public void run() {
                     while (true) {
@@ -83,7 +86,7 @@ public class MainActivity extends AppCompatActivity{
             button.setOnClickListener(
                     new View.OnClickListener() {
                         public void onClick(View view) {
-                            t.start();
+                            thread.start();
                         }
                     });
         }//end:onCreate
@@ -102,44 +105,53 @@ public class MainActivity extends AppCompatActivity{
             /**
              * muestra una ventana emergente
              * */
+
             @Override
-            protected void onPreExecute()
-            {
+            protected void onPreExecute() {
                 super.onPreExecute();
                 progressDialog = new ProgressDialog(context);
                 progressDialog.setCanceledOnTouchOutside(false);
-                progressDialog.setTitle("Connecting to server");
-                progressDialog.setMessage("Please wait...");
+                progressDialog.setTitle("Conectando con el servidor");
+                progressDialog.setMessage("Por favor espere...");
                 progressDialog.show();
+
             }
 
             /**
              * Se conecta al servidor y trata resultado
              * */
             @Override
-            protected ArrayList<Data> doInBackground(String... values){
+            protected ArrayList<Data> doInBackground(String... values) {
                 try {
                     //Se conecta al servidor
                     InetAddress serverAddr = InetAddress.getByName(ADDRESS);
                     Log.i("I/TCP Client", "Connecting...");
                     Socket socket = new Socket(serverAddr, SERVERPORT);
-                    Log.i("I/TCP Client", "Connected to server");
-                    Log.i("I/TCP Client", "Send data to server");
-                    PrintStream output = new PrintStream(socket.getOutputStream());
-                    String request = values[0];
-                    output.println(request);
-                    Log.i("I/TCP Client", "Received data to server");
-                    ObjectInputStream stream = new ObjectInputStream (socket.getInputStream());
-                    ArrayList<Data> listaPedidos = null;
-                    try{
-                        listaPedidos = (ArrayList<Data>) stream.readObject();
-                    } catch(IOException e){
-                        e.printStackTrace();
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
+                    if (socket.isConnected()) {
+
+                        Log.i("I/TCP Client", "Connected to server");
+                        Log.i("I/TCP Client", "Send data to server");
+                        PrintStream output = new PrintStream(socket.getOutputStream());
+                        String request = values[0];
+                        output.println(request);
+
+                        Log.i("I/TCP Client", "Received data to server");
+                        ObjectInputStream stream = new ObjectInputStream(socket.getInputStream());
+                        ArrayList<Data> listaPedidos = null;
+                        try {
+                            listaPedidos = (ArrayList<Data>) stream.readObject();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                        socket.close();
+                        return listaPedidos;
+                    } else{
+                        Toast.makeText(getApplicationContext(),"No se tienen permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
+
                     }
-                    socket.close();
-                    return listaPedidos;
+                    return null;
                 }catch (UnknownHostException ex) {
                     Log.e("E/TCP Client", "" + ex.getMessage());
                     return null;
@@ -154,10 +166,27 @@ public class MainActivity extends AppCompatActivity{
              * */
             @Override
             protected void onPostExecute(ArrayList<Data> listaPedidos){
-                progressDialog.dismiss();
-                EnviarMensaje(listaPedidos);
+                if (listaPedidos != null) {
+                    if (EnviarMensaje(listaPedidos)) {
+                        progressDialog.dismiss();
+                    }
+                } else{
+                    progressDialog.dismiss();
+                    Toast.makeText(getApplicationContext(), "El servidor no se encuentra arriba, favor de validar con el area de Sistemas." , Toast.LENGTH_LONG).show();
+                }
+                if (isCancelled()){
+                    MyATaskCliente.this.cancel(true);
+                }
+
+            }
+            @Override
+            protected void onCancelled() {
+                Toast.makeText(MainActivity.this, "Tarea cancelada!",
+                        Toast.LENGTH_SHORT).show();
             }
         }
+
+
 
         public boolean EnviarMensaje(ArrayList<Data> listaPedidos){
             boolean envioSMS = true;
@@ -174,7 +203,7 @@ public class MainActivity extends AppCompatActivity{
                     sms.sendTextMessage(pedidos.getNumeroCelular().toString()
                             , null, pedidos.getMensaje().toString(), null, null);
                 }
-                Toast.makeText(this, "Se han enviado todos los mensajes con exito" , Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Se han enviado " + listaPedidos.size() +" mensajes con éxito" , Toast.LENGTH_LONG).show();
             }
             catch (Exception e){
                 Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
