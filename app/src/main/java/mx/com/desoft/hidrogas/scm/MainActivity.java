@@ -1,57 +1,186 @@
 package mx.com.desoft.hidrogas.scm;
 
-import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.AsyncTask;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.os.Bundle;
+import android.telephony.SmsManager;
+import android.util.Log;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
-
-public class MainActivity extends AppCompatActivity {
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
 
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+
+import mx.com.desoft.hidrogas.scm.dto.Data;
+
+public class MainActivity extends AppCompatActivity{
+
+        /**
+         * Controles
+         * */
+        private Button button;
+        private EditText editText;
+        private EditText editText2;
+        private Context context = this;
+
+        /**
+         * Puerto
+         * */
+        private static final int SERVERPORT = 5000;
+        /**
+         * HOST
+         * */
+        private static final String ADDRESS = "IP";
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
 
 
+            /*button = ((Button) findViewById(R.id.button));
+            editText = ((EditText) findViewById(R.id.editText));
+            editText2 = ((EditText) findViewById(R.id.editText2));*/
+            //LeerDirectorio();
+            //MyATaskCliente myATaskYW = new MyATaskCliente();
+            //myATaskYW.execute("");
 
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+            final Thread t = new Thread() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            Thread.sleep(5000);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    MyATaskCliente myATaskYW = new MyATaskCliente();
+                                    myATaskYW.execute("");
+                                }
+                            });
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            };
+
+            button.setOnClickListener(
+                    new View.OnClickListener() {
+                        public void onClick(View view) {
+                            t.start();
+                        }
+                    });
+        }//end:onCreate
+
+
+        /**
+         * Clase para interactuar con el servidor
+         * */
+        class MyATaskCliente extends AsyncTask<String,Void,ArrayList<Data>>{
+
+            /**
+             * Ventana que bloqueara la pantalla del movil hasta recibir respuesta del servidor
+             * */
+            ProgressDialog progressDialog;
+
+            /**
+             * muestra una ventana emergente
+             * */
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+            protected void onPreExecute()
+            {
+                super.onPreExecute();
+                progressDialog = new ProgressDialog(context);
+                progressDialog.setCanceledOnTouchOutside(false);
+                progressDialog.setTitle("Connecting to server");
+                progressDialog.setMessage("Please wait...");
+                progressDialog.show();
             }
-        });
-    }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+            /**
+             * Se conecta al servidor y trata resultado
+             * */
+            @Override
+            protected ArrayList<Data> doInBackground(String... values){
+                try {
+                    //Se conecta al servidor
+                    InetAddress serverAddr = InetAddress.getByName(ADDRESS);
+                    Log.i("I/TCP Client", "Connecting...");
+                    Socket socket = new Socket(serverAddr, SERVERPORT);
+                    Log.i("I/TCP Client", "Connected to server");
+                    Log.i("I/TCP Client", "Send data to server");
+                    PrintStream output = new PrintStream(socket.getOutputStream());
+                    String request = values[0];
+                    output.println(request);
+                    Log.i("I/TCP Client", "Received data to server");
+                    ObjectInputStream stream = new ObjectInputStream (socket.getInputStream());
+                    ArrayList<Data> listaPedidos = null;
+                    try{
+                        listaPedidos = (ArrayList<Data>) stream.readObject();
+                    } catch(IOException e){
+                        e.printStackTrace();
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    socket.close();
+                    return listaPedidos;
+                }catch (UnknownHostException ex) {
+                    Log.e("E/TCP Client", "" + ex.getMessage());
+                    return null;
+                } catch (IOException ex) {
+                    Log.e("E/TCP Client", "" + ex.getMessage());
+                    return null;
+                }
+            }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+            /**
+             * Oculta ventana emergente y muestra resultado en pantalla
+             * */
+            @Override
+            protected void onPostExecute(ArrayList<Data> listaPedidos){
+                progressDialog.dismiss();
+                EnviarMensaje(listaPedidos);
+            }
         }
 
-        return super.onOptionsItemSelected(item);
+        public boolean EnviarMensaje(ArrayList<Data> listaPedidos){
+            boolean envioSMS = true;
+            try{
+                int permisoCheck = ContextCompat.checkSelfPermission(
+                        this, android.Manifest.permission.SEND_SMS);
+                if (permisoCheck != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this,"No se tiene permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, 225);
+                }
+
+                for (Data pedidos : listaPedidos) {
+                    SmsManager sms = SmsManager.getDefault();
+                    sms.sendTextMessage(pedidos.getNumeroCelular().toString()
+                            , null, pedidos.getMensaje().toString(), null, null);
+                }
+                Toast.makeText(this, "Se han enviado todos los mensajes con exito" , Toast.LENGTH_LONG).show();
+            }
+            catch (Exception e){
+                Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+                envioSMS = false;
+            }
+            return envioSMS;
+        }
     }
-}
