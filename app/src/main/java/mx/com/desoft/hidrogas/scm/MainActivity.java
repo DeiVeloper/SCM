@@ -18,6 +18,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.PrintStream;
@@ -48,6 +49,8 @@ public class MainActivity extends AppCompatActivity{
         private static final String ADDRESS = "192.168.100.18";
 
         private Thread thread = null;
+
+        private DataOutputStream bufferDeSalida = null;
 
         @Override
         protected void onCreate(Bundle savedInstanceState) {
@@ -129,11 +132,15 @@ public class MainActivity extends AppCompatActivity{
                     Socket socket = new Socket(serverAddr, SERVERPORT);
                     if (socket.isConnected()) {
 
-                        Log.i("I/TCP Client", "Connected to server");
+                        /*Log.i("I/TCP Client", "Connected to server");
                         Log.i("I/TCP Client", "Send data to server");
                         PrintStream output = new PrintStream(socket.getOutputStream());
                         String request = values[0];
-                        output.println(request);
+                        output.println(request);*/
+
+                        bufferDeSalida = new DataOutputStream(socket.getOutputStream());
+                        bufferDeSalida.writeUTF("--I");
+                        bufferDeSalida.flush();
 
                         Log.i("I/TCP Client", "Received data to server");
                         ObjectInputStream stream = new ObjectInputStream(socket.getInputStream());
@@ -167,9 +174,22 @@ public class MainActivity extends AppCompatActivity{
             @Override
             protected void onPostExecute(ArrayList<Data> listaPedidos){
                 if (listaPedidos != null) {
-                    if (EnviarMensaje(listaPedidos)) {
-                        progressDialog.dismiss();
+                    try {
+                        for (Data pedidos : listaPedidos) {
+                            if(EnviarMensaje(pedidos)) {
+                                bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
+                                bufferDeSalida.flush();
+
+                            }
+                        }
+                        bufferDeSalida.writeUTF("--T");
+                        bufferDeSalida.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
+                    /*if (EnviarMensaje(listaPedidos)) {
+                        progressDialog.dismiss();
+                    }*/
                 } else{
                     progressDialog.dismiss();
                     Toast.makeText(getApplicationContext(), "El servidor no se encuentra arriba, favor de validar con el area de Sistemas." , Toast.LENGTH_LONG).show();
@@ -188,8 +208,8 @@ public class MainActivity extends AppCompatActivity{
 
 
 
-        public boolean EnviarMensaje(ArrayList<Data> listaPedidos){
-            boolean envioSMS = true;
+        public boolean EnviarMensaje(Data pedido){
+            /*boolean envioSMS = true;
             try{
                 int permisoCheck = ContextCompat.checkSelfPermission(
                         this, android.Manifest.permission.SEND_SMS);
@@ -204,6 +224,25 @@ public class MainActivity extends AppCompatActivity{
                             , null, pedidos.getMensaje().toString(), null, null);
                 }
                 Toast.makeText(this, "Se han enviado " + listaPedidos.size() +" mensajes con éxito" , Toast.LENGTH_LONG).show();
+            }
+            catch (Exception e){
+                Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+                envioSMS = false;
+            }
+            return envioSMS;*/
+            boolean envioSMS = true;
+            try{
+                int permisoCheck = ContextCompat.checkSelfPermission(
+                        this, android.Manifest.permission.SEND_SMS);
+                if (permisoCheck != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this,"No se tiene permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, 225);
+                }
+
+                SmsManager sms = SmsManager.getDefault();
+                sms.sendTextMessage(pedido.getNumeroCelular().toString()
+                     , null, pedido.getMensaje().toString(), null, null);
             }
             catch (Exception e){
                 Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
