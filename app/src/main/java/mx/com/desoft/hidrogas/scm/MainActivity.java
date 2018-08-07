@@ -46,9 +46,10 @@ public class MainActivity extends AppCompatActivity{
         /**
          * HOST
          * */
-        private static final String ADDRESS = "192.168.100.18";
+        private static final String ADDRESS = "192.168.100.7";
 
         private Thread thread = null;
+        private Socket socket;
 
         private DataOutputStream bufferDeSalida = null;
 
@@ -129,7 +130,7 @@ public class MainActivity extends AppCompatActivity{
                     //Se conecta al servidor
                     InetAddress serverAddr = InetAddress.getByName(ADDRESS);
                     Log.i("I/TCP Client", "Connecting...");
-                    Socket socket = new Socket(serverAddr, SERVERPORT);
+                    socket = new Socket(serverAddr, SERVERPORT);
                     if (socket.isConnected()) {
 
                         /*Log.i("I/TCP Client", "Connected to server");
@@ -152,7 +153,7 @@ public class MainActivity extends AppCompatActivity{
                         } catch (ClassNotFoundException e) {
                             e.printStackTrace();
                         }
-                        socket.close();
+
                         return listaPedidos;
                     } else{
                         Toast.makeText(getApplicationContext(),"No se tienen permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
@@ -175,7 +176,9 @@ public class MainActivity extends AppCompatActivity{
             protected void onPostExecute(ArrayList<Data> listaPedidos){
                 if (listaPedidos != null) {
                     try {
+
                         for (Data pedidos : listaPedidos) {
+                            Toast.makeText(getApplicationContext(), "nombre de  archivos." + pedidos.getNombreArchivo() , Toast.LENGTH_LONG).show();
                             if(EnviarMensaje(pedidos)) {
                                 bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
                                 bufferDeSalida.flush();
@@ -184,6 +187,7 @@ public class MainActivity extends AppCompatActivity{
                         }
                         bufferDeSalida.writeUTF("--T");
                         bufferDeSalida.flush();
+                        socket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
