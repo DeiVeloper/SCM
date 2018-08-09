@@ -188,6 +188,7 @@ public class MainActivity extends AppCompatActivity{
                         bufferDeSalida.writeUTF("--T");
                         bufferDeSalida.flush();
                         socket.close();
+                        progressDialog.dismiss();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
