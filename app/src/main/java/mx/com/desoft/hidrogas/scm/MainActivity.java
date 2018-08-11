@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity{
     /**
      * HOST
      * */
-    private static final String ADDRESS = "IP";
+    private static final String ADDRESS = "192.168.127.240";
 
     private Thread thread = null;
     private Socket socket;
@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity{
     private DataOutputStream bufferDeSalida = null;
     private MyATaskCliente myATaskYW;
     private boolean detenerThread = true;
+    private boolean bandera = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,25 +67,7 @@ public class MainActivity extends AppCompatActivity{
         titulo.setText("Sistema de Control de Mensajería");
 
 
-        thread = new Thread() {
-            @Override
-            public void run() {
-                while (detenerThread) {
-                    try {
-                        Thread.sleep(5000);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                myATaskYW = new MyATaskCliente();
-                                myATaskYW.execute("");
-                            }
-                        });
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
+
 
         simpleSwitch = findViewById(R.id.switch1);
         simpleSwitch.setText("Iniciar Servicio...");
@@ -94,6 +77,25 @@ public class MainActivity extends AppCompatActivity{
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked){
                     detenerThread = true;
+                    thread = new Thread() {
+                        @Override
+                        public void run() {
+                            while (detenerThread) {
+                                try {
+                                    Thread.sleep(5000);
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            myATaskYW = new MyATaskCliente();
+                                            myATaskYW.execute("");
+                                        }
+                                    });
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    };
                     thread.start();
                     simpleSwitch.setText("Activado!");
 
@@ -131,7 +133,7 @@ public class MainActivity extends AppCompatActivity{
         protected void onPreExecute() {
             super.onPreExecute();
             progressDialog = new ProgressDialog(context);
-            progressDialog.setCanceledOnTouchOutside(false);
+            progressDialog.setCanceledOnTouchOutside(true);
             progressDialog.setTitle("Conectando con el servidor");
             progressDialog.setMessage("Por favor espere...");
             if (detenerThread) {
@@ -146,11 +148,10 @@ public class MainActivity extends AppCompatActivity{
         protected ArrayList<Data> doInBackground(String... values) {
             try {
                 InetAddress serverAddr = InetAddress.getByName(ADDRESS);
-                Log.i("I/TCP Client", "Connecting...");
                 socket = new Socket(serverAddr, SERVERPORT);
                 if (socket.isConnected()) {
                     bufferDeSalida = new DataOutputStream(socket.getOutputStream());
-                    bufferDeSalida.writeUTF("--I");
+                    bufferDeSalida.writeUTF("INICIO");
                     bufferDeSalida.flush();
 
                     Log.i("I/TCP Client", "Received data to server");
@@ -163,20 +164,32 @@ public class MainActivity extends AppCompatActivity{
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
                     }
+                    if (!listaPedidos.isEmpty()) {
+                        try {
+                            for (Data pedidos : listaPedidos) {
+                                if(EnviarMensaje(pedidos)) {
+                                    bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
+                                    bufferDeSalida.flush();
+                                }
+                            }
 
-                    return listaPedidos;
-                } else{
-                    if (detenerThread){
-                        Toast.makeText(getApplicationContext(),"Servicio no disponible, favor de contactar al administrador.", Toast.LENGTH_LONG).show();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-
+                    bufferDeSalida.writeUTF("FIN");
+                    bufferDeSalida.flush();
+                    socket.close();
+                    progressDialog.dismiss();
+                    return listaPedidos;
                 }
                 return null;
             }catch (UnknownHostException ex) {
-                Log.e("E/TCP Client", "" + ex.getMessage());
+                Log.e("UnknownHostException", "" + ex.getMessage());
                 return null;
             } catch (IOException ex) {
-                Log.e("E/TCP Client", "" + ex.getMessage());
+                bandera = true;
+                Log.e("IOException", "" + ex.getMessage());
                 return null;
             }
         }
@@ -186,27 +199,12 @@ public class MainActivity extends AppCompatActivity{
          * */
         @Override
         protected void onPostExecute(ArrayList<Data> listaPedidos){
-            if (listaPedidos != null) {
-                try {
-                    for (Data pedidos : listaPedidos) {
-                        Toast.makeText(getApplicationContext(), "nombre de  archivos." + pedidos.getNombreArchivo() , Toast.LENGTH_LONG).show();
-                        if(EnviarMensaje(pedidos)) {
-                            bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
-                            bufferDeSalida.flush();
-                        }
-                    }
-                    bufferDeSalida.writeUTF("--T");
-                    bufferDeSalida.flush();
-                    socket.close();
-                    progressDialog.dismiss();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else{
-                progressDialog.dismiss();
-                if (detenerThread) {
-                    Toast.makeText(getApplicationContext(), "No se encontraron archivos para procesar.", Toast.LENGTH_LONG).show();
-                }
+            progressDialog.dismiss();
+            if (bandera){
+               Toast.makeText(getApplicationContext(),"Servicio no disponible, favor de contactar al administrador.", Toast.LENGTH_LONG).show();
+            }
+            if (listaPedidos != null && listaPedidos.isEmpty()) {
+                Toast.makeText(getApplicationContext(), "No se encontraron archivos para procesar.", Toast.LENGTH_LONG).show();
             }
         }
 
