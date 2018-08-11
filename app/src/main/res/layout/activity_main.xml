@@ -3,34 +3,53 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@color/back">
+
+    <include
+        android:id="@+id/tool_bar"
+        layout="@layout/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="110dp"
+        android:layout_marginTop="30dp"
+        android:adjustViewBounds="false"
+        android:background="@color/back"
+        android:paddingBottom="50dp"
+        android:paddingTop="50dp"
+        android:scaleType="center"
+        android:src="@drawable/logo" />
+
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ingrese petición" />
+        android:id="@+id/tituloSCM"
+        android:textSize="35dp"
+        android:textAlignment="center"
+        android:textColor="#ffffff"/>
 
-    <EditText
+
+
+    <Switch
+        android:id="@+id/switch1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/editText"/>
-
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Enviar petición"
-        android:id="@+id/button" />
+        android:text="Switch"
+        android:layout_marginTop="20dp"
+        android:textColor="#ffffff"
+        android:layout_marginLeft="5dp"
+        android:textSize="20sp"/>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Respuesta del servidor" />
+        android:id="@+id/etiquetaServidor"
+        android:layout_marginTop="30dp"
+        android:textSize="20dp"/>
 
-    <EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textMultiLine"
-        android:ems="10"
-        android:id="@+id/editText2" />
 
 </LinearLayout>
