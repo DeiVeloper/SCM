@@ -65,7 +65,6 @@ public class MainActivity extends AppCompatActivity{
         textView = findViewById(R.id.etiquetaServidor);
         titulo = findViewById(R.id.tituloSCM);
         titulo.setText("Sistema de Control de Mensajería");
-
         simpleSwitch = findViewById(R.id.switch1);
         simpleSwitch.setText("Iniciar Servicio...");
         simpleSwitch.setChecked(false);
