@@ -163,6 +163,7 @@ public class MainActivity extends AppCompatActivity{
                     if (!listaPedidos.isEmpty()) {
                         try {
                             for (Data pedidos : listaPedidos) {
+                                esperar(3);
                                 if(EnviarMensaje(pedidos)) {
                                     bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
                                     bufferDeSalida.flush();
@@ -232,5 +233,17 @@ public class MainActivity extends AppCompatActivity{
             envioSMS = false;
         }
         return envioSMS;
+    }
+
+    /**
+     * Pausa la ejecución durante X segundos.
+     * @param segundos El número de segundos que se quiere esperar.
+     */
+    public static void esperar(int segundos){
+        try {
+            Thread.sleep(segundos * 1000);
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 }
