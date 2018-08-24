@@ -160,9 +160,11 @@ public class MainActivity extends AppCompatActivity{
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
                     }
+                    Log.i("lista", "" + listaPedidos.size());
                     if (!listaPedidos.isEmpty()) {
                         try {
                             for (Data pedidos : listaPedidos) {
+                                Log.i("espera", "entra");
                                 esperar(3);
                                 if(EnviarMensaje(pedidos)) {
                                     bufferDeSalida.writeUTF(pedidos.getNombreArchivo());
@@ -214,12 +216,13 @@ public class MainActivity extends AppCompatActivity{
     }
 
     public boolean EnviarMensaje(Data pedido){
+        Log.i("envia", "tiempo de envio");
         boolean envioSMS = true;
         try{
             int permisoCheck = ContextCompat.checkSelfPermission(
                     this, android.Manifest.permission.SEND_SMS);
             if (permisoCheck != PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this,"No se tiene permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
+                //Toast.makeText(this,"No se tiene permisos para enviar el mensaje", Toast.LENGTH_LONG).show();
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, 225);
             }
 
@@ -228,7 +231,7 @@ public class MainActivity extends AppCompatActivity{
                     , null, pedido.getMensaje().toString(), null, null);
         }
         catch (Exception e){
-            Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
+            //Toast.makeText(this, "Mensaje no enviado, datos incorrectos." + e.getMessage().toString(), Toast.LENGTH_LONG).show();
             e.printStackTrace();
             envioSMS = false;
         }
